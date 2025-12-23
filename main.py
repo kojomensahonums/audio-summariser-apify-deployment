@@ -43,7 +43,7 @@ asr_pipeline = pipeline(
 )
 
 llm_tokenizer = AutoTokenizer.from_pretrained(LLM_ID)
-llm_model = AutoModelForCausalLM.from_pretrained(LLM_ID, device_map="auto", torch_dtype=torch.float16)
+llm_model = AutoModelForCausalLM.from_pretrained(LLM_ID, device_map="auto", dtype=torch.float16)
 
 
 # -----------------------------
@@ -131,6 +131,7 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
