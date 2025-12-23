@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-APIFY_ACTOR = "philip.boyedoku/audio-summariser-apify-deployment" 
+APIFY_ACTOR = "philip.boyedoku~audio-summariser-apify-deployment" 
 APIFY_TOKEN = st.secrets["APIFY_TOKEN"]
 
 st.title("Audio Transcription & Summary")
@@ -35,4 +35,5 @@ if st.button("Run"):
             st.subheader("Result")
             st.write(data["result"])
         else:
+
             st.error("Actor execution failed")
