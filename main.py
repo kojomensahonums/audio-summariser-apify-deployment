@@ -103,7 +103,14 @@ def repurpose(text: str) -> str:
 # -----------------------------
 # Actor entry point
 # -----------------------------
+import asyncio
+from apify import Actor
+
 async def main():
+    # Initialize Actor runtime
+    await Actor.init()
+
+    # Now you can safely get input
     input_data = await Actor.get_input() or {}
 
     audio_url = input_data.get("audio_url")
@@ -122,15 +129,20 @@ async def main():
     else:
         output = transcript
 
-    # Return output to Actor
+    # Return output
     await Actor.set_output({
         "transcript": transcript,
         "result": output,
         "task": task,
     })
 
+    # Close Actor runtime
+    await Actor.close()
+
 if __name__ == "__main__":
     asyncio.run(main())
+
+
 
 
 
