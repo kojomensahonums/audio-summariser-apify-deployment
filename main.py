@@ -111,7 +111,7 @@ async def main():
 
     # Get input safely inside async function
     input_data = await Actor.get_input() or {}
-    await Actor.log.info(f"Received input: {input_data}")
+    Actor.log.info(f"Received input: {input_data}")
 
     # Your existing processing
     audio_url = input_data.get("audio_url")
@@ -155,6 +155,7 @@ async def main():
 # This runs the async main function
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
