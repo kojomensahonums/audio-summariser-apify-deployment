@@ -20,6 +20,7 @@ from urllib.parse import urlparse
 device = "cpu"
 torch_dtype = torch.float32
 
+hf_token = os.environ.get("HF_TOKEN")
 WHISPER_ID = "distil-whisper/distil-small.en"
 LLM_ID = "microsoft/phi-2"
 
@@ -125,4 +126,5 @@ async def main():
         "transcript": transcript,
         "result": output,
         "task": task,
+
     }
