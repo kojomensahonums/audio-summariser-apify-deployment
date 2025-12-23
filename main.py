@@ -103,41 +103,46 @@ def repurpose(text: str) -> str:
 # -----------------------------
 # Actor entry point
 # -----------------------------
-import asyncio
-from apify import Actor
-
 async def main():
-    # Initialize Actor runtime
     await Actor.init()
 
-    # Now you can safely get input
-    input_data = await Actor.get_input() or {}
+    try:
+        input_data = await Actor.get_input() or {}
+        await Actor.log.info(f"Received input: {input_data}")
 
-    audio_url = input_data.get("audio_url")
-    task = input_data.get("task", "summary")
+        audio_url = input_data.get("audio_url")
+        task = input_data.get("task", "summary")
 
-    if not audio_url:
-        raise ValueError("audio_url is required")
+        if not audio_url:
+            await Actor.set_output({
+                "error": "audio_url is required"
+            })
+            return
 
-    audio_path = download_audio(audio_url)
-    transcript = transcribe(audio_path)
+        audio_path = download_audio(audio_url)
+        transcript = transcribe(audio_path)
 
-    if task == "summary":
-        output = summarise(transcript)
-    elif task == "repurpose":
-        output = repurpose(transcript)
-    else:
-        output = transcript
+        if task == "summary":
+            output = summarise(transcript)
+        elif task == "repurpose":
+            output = repurpose(transcript)
+        else:
+            output = transcript
 
-    # Return output
-    await Actor.set_output({
-        "transcript": transcript,
-        "result": output,
-        "task": task,
-    })
+        await Actor.set_output({
+            "transcript": transcript,
+            "result": output,
+            "task": task,
+        })
 
-    # Close Actor runtime
-    await Actor.close()
+    except Exception as e:
+        await Actor.log.exception("Actor failed")
+        await Actor.set_output({
+            "error": str(e)
+        })
+
+    finally:
+        await Actor.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
