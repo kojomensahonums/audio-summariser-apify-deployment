@@ -108,7 +108,7 @@ async def main():
 
     try:
         input_data = await Actor.get_input() or {}
-        await Actor.log.info(f"Received input: {input_data}")
+        Actor.log.info(f"Received input: {input_data}")
 
         audio_url = input_data.get("audio_url")
         task = input_data.get("task", "summary")
@@ -136,16 +136,17 @@ async def main():
         })
 
     except Exception as e:
-        await Actor.log.exception("Actor failed")
+        Actor.log.exception("Actor failed")
         await Actor.set_output({
             "error": str(e)
         })
 
     finally:
-        await Actor.close()
+        await Actor.exit()
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
