@@ -1,4 +1,5 @@
 from apify import Actor
+import asyncio
 import torch
 import requests
 import os
@@ -102,12 +103,11 @@ def repurpose(text: str) -> str:
 # -----------------------------
 # Actor entry point
 # -----------------------------
-@Actor.main()
 async def main():
-    input = await Actor.get_input() or {}
+    input_data = await Actor.get_input() or {}
 
-    audio_url = input.get("audio_url")
-    task = input.get("task", "summary")
+    audio_url = input_data.get("audio_url")
+    task = input_data.get("task", "summary")
 
     if not audio_url:
         raise ValueError("audio_url is required")
@@ -122,12 +122,15 @@ async def main():
     else:
         output = transcript
 
-    return {
+    # Return output to Actor
+    await Actor.set_output({
         "transcript": transcript,
         "result": output,
         "task": task,
+    })
 
-    }
+if __name__ == "__main__":
+    asyncio.run(main())
 
 
 
