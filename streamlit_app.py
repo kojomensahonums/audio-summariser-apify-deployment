@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import base64
+import time
 
 APIFY_ACTOR = "philip.boyedoku~audio-summariser-apify-deployment"
 APIFY_TOKEN = st.secrets["APIFY_TOKEN"]
@@ -42,20 +43,32 @@ if st.button("Run"):
             else:
                 run_id = resp.json()["data"]["id"]
                 # Fetch dataset output
-                dataset_resp = requests.get(
-                    f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?clean=true",
+                while True:
+                    status_resp = requests.get(
+                        f"https://api.apify.com/v2/actor-runs/{run_id}",
+                        headers={"Authorization": f"Bearer {APIFY_TOKEN}"}
+                    )
+                    status = status_resp.json()["data"]["status"]
+                
+                    if status == "SUCCEEDED":
+                        break
+                    elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
+                        st.error(f"Actor failed with status: {status}")
+                        st.stop()
+                
+                    time.sleep(3)
+                
+                # Fetch Actor output (NOT dataset)
+                output_resp = requests.get(
+                    f"https://api.apify.com/v2/actor-runs/{run_id}/output",
                     headers={"Authorization": f"Bearer {APIFY_TOKEN}"}
                 )
-
-                if dataset_resp.ok:
-                    dataset = dataset_resp.json()
-                    if dataset:
-                        result = dataset[0]
-                        st.subheader("Transcript")
-                        st.write(result.get("transcript"))
-                        st.subheader("Result")
-                        st.write(result.get("result"))
-                    else:
-                        st.warning("No output in dataset")
+                
+                if output_resp.ok:
+                    data = output_resp.json()
+                    st.subheader("Transcript")
+                    st.write(data.get("transcript"))
+                    st.subheader("Result")
+                    st.write(data.get("result"))
                 else:
-                    st.error("Failed to fetch dataset")
+                    st.error("Failed to fetch actor output")
