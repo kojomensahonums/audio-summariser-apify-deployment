@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 # Model loading (global)
 # -----------------------------
 device = "cpu"
-torch_dtype = torch.float32
+torch_dtype = torch.float16
 
 hf_token = os.environ.get("HF_TOKEN")
 WHISPER_ID = "distil-whisper/distil-small.en"
@@ -26,7 +26,7 @@ LLM_ID = "microsoft/phi-2"
 
 asr_model = AutoModelForSpeechSeq2Seq.from_pretrained(
     WHISPER_ID,
-    torch_dtype=torch_dtype,
+    dtype=torch_dtype,
     low_cpu_mem_usage=True,
 )
 processor = AutoProcessor.from_pretrained(WHISPER_ID)
@@ -42,7 +42,7 @@ asr_pipeline = pipeline(
 )
 
 llm_tokenizer = AutoTokenizer.from_pretrained(LLM_ID)
-llm_model = AutoModelForCausalLM.from_pretrained(LLM_ID)
+llm_model = AutoModelForCausalLM.from_pretrained(LLM_ID, device_map="auto", torch_dtype=torch.float16)
 
 
 # -----------------------------
@@ -128,5 +128,6 @@ async def main():
         "task": task,
 
     }
+
 
 
