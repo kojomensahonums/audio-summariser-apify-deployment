@@ -2,9 +2,10 @@
   "name": "audio-summariser-apify-deployment",
   "version": "0.1",
   "buildTag": "latest",
-  "entryPoint": "python main.py",
+  "dockerfile": "Dockerfile",
   "env": {
     "PYTHONUNBUFFERED": "1"
   }
 }
+
 
