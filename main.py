@@ -151,11 +151,10 @@ async def main():
     if audio_b64 and os.path.exists(audio_path):
         os.remove(audio_path)
 
-    await Actor.close()
-
 # This runs the async main function
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
