@@ -105,43 +105,58 @@ def repurpose(text: str) -> str:
 # Actor entry point
 # -----------------------------
 # Get input
-input_data = await Actor.get_input() or {}
-await Actor.log.info(f"Received input: {json.dumps(input_data)}")
-task = input_data.get("task", "summary")
+async def main():
+    # Initialize Actor
+    await Actor.init()
 
-# Determine audio source
-if "audio_b64" in input_data:
-    # Decode base64 to temp file
-    audio_bytes = base64.b64decode(input_data["audio_b64"])
-    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-    tmp_file.write(audio_bytes)
-    tmp_file.flush()
-    tmp_file.close()
-    audio_path = tmp_file.name
-elif "audio_url" in input_data:
-    audio_path = download_audio(input_data["audio_url"])
-else:
-    raise ValueError("No audio provided")
+    # Get input safely inside async function
+    input_data = await Actor.get_input() or {}
+    await Actor.log.info(f"Received input: {input_data}")
 
-# Then transcribe/process
-transcript = transcribe(audio_path)
-if task == "summary":
-    output = summarise(transcript)
-elif task == "repurpose":
-    output = repurpose(transcript)
-else:
-    output = transcript
+    # Your existing processing
+    audio_url = input_data.get("audio_url")
+    audio_b64 = input_data.get("audio_b64")
+    task = input_data.get("task", "summary")
 
-# Save result to dataset
-await Actor.push_data({
-    "transcript": transcript,
-    "result": output,
-    "task": task
-})
+    if audio_b64:
+        # decode base64 to temp file
+        import base64, tempfile, os
+        audio_bytes = base64.b64decode(audio_b64)
+        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+        tmp_file.write(audio_bytes)
+        tmp_file.flush()
+        tmp_file.close()
+        audio_path = tmp_file.name
+    elif audio_url:
+        audio_path = download_audio(audio_url)
+    else:
+        raise ValueError("No audio provided")
 
-# Cleanup temp file
-if "audio_b64" in input_data and os.path.exists(audio_path):
-    os.remove(audio_path)
+    transcript = transcribe(audio_path)
+    if task == "summary":
+        output = summarise(transcript)
+    elif task == "repurpose":
+        output = repurpose(transcript)
+    else:
+        output = transcript
+
+    await Actor.push_data({
+        "transcript": transcript,
+        "result": output,
+        "task": task
+    })
+
+    # Clean up temp file
+    if audio_b64 and os.path.exists(audio_path):
+        os.remove(audio_path)
+
+    await Actor.close()
+
+# This runs the async main function
+if __name__ == "__main__":
+    asyncio.run(main())
+
+
 
 
 
