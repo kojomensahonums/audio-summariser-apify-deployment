@@ -103,10 +103,11 @@ def repurpose(text: str) -> str:
 # -----------------------------
 # Actor entry point
 # -----------------------------
-async def main():
-    await Actor.init()
+import asyncio
+from apify import Actor
 
-    try:
+async def main():
+    async with Actor:
         input_data = await Actor.get_input() or {}
         Actor.log.info(f"Received input: {input_data}")
 
@@ -114,10 +115,7 @@ async def main():
         task = input_data.get("task", "summary")
 
         if not audio_url:
-            await Actor.set_output({
-                "error": "audio_url is required"
-            })
-            return
+            raise ValueError("audio_url is required")
 
         audio_path = download_audio(audio_url)
         transcript = transcribe(audio_path)
@@ -129,23 +127,16 @@ async def main():
         else:
             output = transcript
 
-        await Actor.set_output({
+        # Push result to default dataset (this IS the actor output)
+        await Actor.push_data({
             "transcript": transcript,
             "result": output,
             "task": task,
         })
 
-    except Exception as e:
-        Actor.log.exception("Actor failed")
-        await Actor.set_output({
-            "error": str(e)
-        })
-
-    finally:
-        await Actor.exit()
-
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
