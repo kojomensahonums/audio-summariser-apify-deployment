@@ -3,7 +3,6 @@ import asyncio
 import torch
 import requests
 import os
-#from tempfile import NamedTemporaryFile
 from transformers import (
     AutoModelForSpeechSeq2Seq,
     AutoProcessor,
@@ -15,6 +14,7 @@ from pydub import AudioSegment
 from urllib.parse import urlparse
 import tempfile
 import os
+import json
 
 # -----------------------------
 # Model loading (global)
@@ -106,6 +106,7 @@ def repurpose(text: str) -> str:
 # -----------------------------
 # Get input
 input_data = await Actor.get_input() or {}
+await Actor.log.info(f"Received input: {json.dumps(input_data)}")
 task = input_data.get("task", "summary")
 
 # Determine audio source
@@ -141,6 +142,7 @@ await Actor.push_data({
 # Cleanup temp file
 if "audio_b64" in input_data and os.path.exists(audio_path):
     os.remove(audio_path)
+
 
 
 
