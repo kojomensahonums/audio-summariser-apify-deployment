@@ -136,7 +136,7 @@ async def main():
     transcript = transcribe(audio_path)
     if task == "summary":
         output = summarise(transcript)
-    elif task == "repurpose":
+    elif task == "copywrite":
         output = repurpose(transcript)
     else:
         output = transcript
@@ -154,6 +154,7 @@ async def main():
 # This runs the async main function
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
