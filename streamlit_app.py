@@ -11,7 +11,7 @@ st.title("Audio Transcription & Summary")
 # Upload local file or use URL
 uploaded_file = st.file_uploader("Upload an audio file", type=["mp3","wav","m4a","ogg"])
 audio_url = st.text_input("Or paste audio URL")
-task = st.selectbox("Task", ["summary", "repurpose", "transcript"])
+task = st.selectbox("Task", ["summary", "copywrite", "transcript"])
 
 if st.button("Run"):
     if not uploaded_file and not audio_url:
@@ -72,3 +72,4 @@ if st.button("Run"):
                     st.write(data.get("result"))
                 else:
                     st.error("Failed to fetch actor output")
+
