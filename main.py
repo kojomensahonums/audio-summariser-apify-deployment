@@ -41,7 +41,7 @@ def transcribe_with_voxtral(audio_b64: str) -> str:
         "model": "mistralai/voxtral-small-24b-2507",
         "messages": [
             {"role": "user", "content": [
-                {"type": "text", "text": "Transcribe this audio accurately."},
+                {"type": "text", "text": "Transcribe this audio accurately. Do not summarize. Do not add commentary."},
                 {"type": "input_audio", "input_audio": {"data": audio_b64, "format": "wav"}}
             ]}
         ]
@@ -62,7 +62,7 @@ def llm_task_with_deepseek(transcript: str, task_type: str = "summary") -> str:
     if task_type == "summary":
         prompt = f"Summarize the following transcript:\n{transcript}"
     elif task_type == "copywrite":
-        prompt = f"Create social media content from this transcript:\n{transcript}"
+        prompt = f"Create social media content from this transcript. Keep them concise and compelling:\n{transcript}"
 
     payload = {
         "model": "deepseek/deepseek-chat-v3.1",
@@ -148,3 +148,4 @@ async def main():
 # This runs the async main function
 if __name__ == "__main__":
     asyncio.run(main())
+
