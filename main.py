@@ -1,57 +1,24 @@
 from apify import Actor
 import asyncio
-import torch
 import requests
 import os
-from transformers import (
-    AutoModelForSpeechSeq2Seq,
-    AutoProcessor,
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    pipeline,
-)
 from pydub import AudioSegment
 from urllib.parse import urlparse
 import tempfile
 from tempfile import NamedTemporaryFile
-import os
 import json
+import base64
 
 # -----------------------------
-# Model loading (global)
+# Helper functions
 # -----------------------------
-device = "cpu"
-torch_dtype = torch.float16
 
-hf_token = os.environ.get("HF_TOKEN")
-WHISPER_ID = "distil-whisper/distil-small.en"
-LLM_ID = "microsoft/phi-2"
-
-asr_model = AutoModelForSpeechSeq2Seq.from_pretrained(
-    WHISPER_ID,
-    dtype=torch_dtype,
-    low_cpu_mem_usage=True,
-)
-processor = AutoProcessor.from_pretrained(WHISPER_ID)
-
-asr_pipeline = pipeline(
-    "automatic-speech-recognition",
-    model=asr_model,
-    tokenizer=processor.tokenizer,
-    feature_extractor=processor.feature_extractor,
-    chunk_length_s=25,
-    batch_size=8,
-    device=-1,
-)
-
-llm_tokenizer = AutoTokenizer.from_pretrained(LLM_ID)
-llm_model = AutoModelForCausalLM.from_pretrained(LLM_ID, device_map="auto", dtype=torch.float16)
-
-
-# -----------------------------
-# Helpers
-# -----------------------------
 def download_audio(url: str) -> str:
+    """
+    Downloads an audio file from a URL and saves it to a temporary file.
+    Returns the path to the temporary file.
+    """
+
     parsed = urlparse(url)
     filename = os.path.basename(parsed.path)
 
@@ -65,41 +32,53 @@ def download_audio(url: str) -> str:
                 f.write(chunk)
             return f.name
 
+def transcribe_with_voxtral(audio_b64: str) -> str:
+    """
+    Transcribes audio using the Voxtral model via OpenRouter API.
+    """
 
-def transcribe(path: str) -> str:
-    result = asr_pipeline(path)
-    return result["text"]
-
-
-def generate_llm(prompt: str, context: str) -> str:
-    full_prompt = f"{context}\n\n{prompt}\n\nAnswer:"
-    inputs = llm_tokenizer(full_prompt, return_tensors="pt")
-
-    with torch.no_grad():
-        outputs = llm_model.generate(
-            **inputs,
-            max_new_tokens=200,
-            temperature=0.7,
-            top_p=0.9,
-            pad_token_id=llm_tokenizer.eos_token_id,
-        )
-
-    decoded = llm_tokenizer.decode(outputs[0], skip_special_tokens=True)
-    return decoded[len(full_prompt):].strip()
-
-
-def summarise(text: str) -> str:
-    return generate_llm(
-        f"Summarize the following transcript:\n{text}",
-        "You are a helpful assistant.",
-    )
+    payload = {
+        "model": "mistralai/voxtral-small-24b-2507",
+        "messages": [
+            {"role": "user", "content": [
+                {"type": "text", "text": "Transcribe this audio accurately."},
+                {"type": "input_audio", "input_audio": {"data": audio_b64, "format": "wav"}}
+            ]}
+        ]
+    }
+    r = requests.post("https://openrouter.ai/api/v1/chat/completions",
+                      headers={"Authorization": f"Bearer {OPENROUTER_KEY}",
+                               "Content-Type": "application/json"},
+                      data=json.dumps(payload))
+    resp_json = r.json()
+    return resp_json["choices"][0]["message"]["content"][0]["text"]
 
 
-def repurpose(text: str) -> str:
-    return generate_llm(
-        f"Create social media content from this transcript:\n{text}",
-        "You are a creative assistant.",
-    )
+def llm_task_with_deepseek(transcript: str, task_type: str = "summary") -> str:
+    """
+    Performs a task (summary or copywriting) on the transcript using DeepSeek model via OpenRouter API.
+    """
+
+    if task_type == "summary":
+        prompt = f"Summarize the following transcript:\n{transcript}"
+    elif task_type == "copywrite":
+        prompt = f"Create social media content from this transcript:\n{transcript}"
+
+    payload = {
+        "model": "deepseek/deepseek-chat-v3.1",
+        "messages": [{"role": "user", "content": prompt}]
+    }
+    r = requests.post("https://openrouter.ai/api/v1/chat/completions",
+                      headers={"Authorization": f"Bearer {OPENROUTER_KEY}",
+                               "Content-Type": "application/json"},
+                      data=json.dumps(payload))
+    resp_json = r.json()
+    msg_content = resp_json["choices"][0]["message"]["content"]
+    if isinstance(msg_content, list):
+        text = "".join([c.get("text", "") for c in msg_content])
+    else:
+        text = msg_content
+    return text
 
 
 # -----------------------------
@@ -120,10 +99,11 @@ async def main():
     task = input_data.get("task", "summary")
 
     if audio_b64:
-        # decode base64 to temp file
-        import base64, tempfile, os
+        # Decode the uploaded audio bytes
         audio_bytes = base64.b64decode(audio_b64)
-        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+
+        # Write to a temporary file
+        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".tmp")
         tmp_file.write(audio_bytes)
         tmp_file.flush()
         tmp_file.close()
@@ -133,11 +113,22 @@ async def main():
     else:
         raise ValueError("No audio provided")
 
-    transcript = transcribe(audio_path)
+    # Convert to WAV (for Voxtral) no matter what
+    audio_segment = AudioSegment.from_file(audio_path)
+    wav_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+    audio_segment.export(wav_file.name, format="wav")
+    audio_path = wav_file.name
+
+    # Read WAV and encode to base64 for Voxtral
+    with open(audio_path, "rb") as f:
+        audio_bytes = f.read()
+    audio_b64_for_voxtral = base64.b64encode(audio_bytes).decode("utf-8")
+
+    transcript = transcribe_with_voxtral(audio_b64_for_voxtral)
     if task == "summary":
-        output = summarise(transcript)
+        output = llm_task_with_deepseek(transcript, "summary")
     elif task == "copywrite":
-        output = repurpose(transcript)
+        output = llm_task_with_deepseek(transcript, "copywrite")
     else:
         output = transcript
 
@@ -150,22 +141,10 @@ async def main():
     # Clean up temp file
     if audio_b64 and os.path.exists(audio_path):
         os.remove(audio_path)
+    if not audio_b64 and audio_url and os.path.exists(audio_path):
+        os.remove(audio_path)
+
 
 # This runs the async main function
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
