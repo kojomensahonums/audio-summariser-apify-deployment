@@ -155,7 +155,7 @@ async def main():
     })
 
     await Actor.set_value(
-    None,
+    "OUTPUT",
     {
         "transcript": transcript,
         "result": output,
@@ -177,6 +177,7 @@ async def main():
 # This runs the async main function
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
