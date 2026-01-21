@@ -153,6 +153,13 @@ async def main():
         "result": output,
         "task": task
     })
+
+    # Explicitly **set run output**
+    await Actor.set_value("OUTPUT", {
+        "transcript": transcript,
+        "result": output,
+        "task": task
+    })
     
     # Clean up temp file
     if audio_b64 and os.path.exists(audio_path):
@@ -162,16 +169,12 @@ async def main():
 
     await Actor.exit()
 
-    return {
-        "transcript": transcript,
-        "result": output,
-        "task": task
-    }
-
 
 # This runs the async main function
 if __name__ == "__main__":
-    asyncio.run(main())
+    # asyncio.run(main())
+    Actor.run(main)
+
 
 
 
