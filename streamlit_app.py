@@ -44,35 +44,27 @@ if st.button("Run"):
                 run_id = resp.json()["data"]["id"]
                 # Fetch dataset output
                 while True:
-                    status_resp = requests.get(
+                    # status_resp = requests.get(
                         # f"https://api.apify.com/v2/actor-runs/{run_id}",
-                        f"https://api.apify.com/v2/key-value-stores/actor-default/records/OUTPUT",
+                        # Fetch dataset items (THIS is where your output is)
+                    dataset_resp = requests.get(
+                        f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?clean=true&limit=1",
                         headers={"Authorization": f"Bearer {APIFY_TOKEN}"}
                     )
-                    resp = requests.post(
-                        f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/runs?waitForFinish=300",
-                        headers={
-                            "Authorization": f"Bearer {APIFY_TOKEN}",
-                            "Content-Type": "application/json"
-                        },
-                        json=payload
-                    )
-                    if not resp.ok:
-                        st.error("Actor execution failed")
-                        st.stop()
                     
-                    run_data = resp.json()["data"]
-                    
-                    output = run_data.get("output")
-                    if not output:
-                        st.error("Actor finished but returned no output")
-                        st.stop()
-                    
-                    st.subheader("Transcript")
-                    st.write(output.get("transcript"))
-                    
-                    st.subheader("Result")
-                    st.write(output.get("result"))
+                    if dataset_resp.ok:
+                        items = dataset_resp.json()
+                        if items:
+                            data = items[0]
+                            st.subheader("Transcript")
+                            st.write(data.get("transcript"))
+                            st.subheader("Result")
+                            st.write(data.get("result"))
+                        else:
+                            st.error("Dataset is empty")
+                    else:
+                        st.error("Failed to fetch dataset output")
+
 
 
                     # status = status_resp.json()["data"]["status"]
@@ -106,6 +98,7 @@ if st.button("Run"):
                 #     st.write(data.get("result"))
                 # else:
                 #     st.error("Failed to fetch actor output")
+
 
 
 
