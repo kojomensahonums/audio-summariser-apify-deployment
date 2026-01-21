@@ -49,37 +49,64 @@ if st.button("Run"):
                         f"https://api.apify.com/v2/key-value-stores/actor-default/records/OUTPUT",
                         headers={"Authorization": f"Bearer {APIFY_TOKEN}"}
                     )
-                    # status = status_resp.json()["data"]["status"]
-                    status_json = status_resp.json()
-                    if "data" not in status_json:
-                        st.error(f"Failed to fetch run status: {status_json}")
+                    resp = requests.post(
+                        f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/runs?waitForFinish=300",
+                        headers={
+                            "Authorization": f"Bearer {APIFY_TOKEN}",
+                            "Content-Type": "application/json"
+                        },
+                        json=payload
+                    )
+                    if not resp.ok:
+                        st.error("Actor execution failed")
                         st.stop()
                     
-                    status = status_json["data"].get("status")
+                    run_data = resp.json()["data"]
+                    
+                    output = run_data.get("output")
+                    if not output:
+                        st.error("Actor finished but returned no output")
+                        st.stop()
+                    
+                    st.subheader("Transcript")
+                    st.write(output.get("transcript"))
+                    
+                    st.subheader("Result")
+                    st.write(output.get("result"))
+
+
+                    # status = status_resp.json()["data"]["status"]
+                #     status_json = status_resp.json()
+                #     if "data" not in status_json:
+                #         st.error(f"Failed to fetch run status: {status_json}")
+                #         st.stop()
+                    
+                #     status = status_json["data"].get("status")
 
                 
-                    if status == "SUCCEEDED":
-                        break
-                    elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
-                        st.error(f"Actor failed with status: {status}")
-                        st.stop()
+                #     if status == "SUCCEEDED":
+                #         break
+                #     elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
+                #         st.error(f"Actor failed with status: {status}")
+                #         st.stop()
                 
-                    time.sleep(3)
+                #     time.sleep(3)
                 
-                # Fetch Actor output (NOT dataset)
-                output_resp = requests.get(
-                    f"https://api.apify.com/v2/actor-runs/{run_id}/output",
-                    headers={"Authorization": f"Bearer {APIFY_TOKEN}"}
-                )
+                # # Fetch Actor output (NOT dataset)
+                # output_resp = requests.get(
+                #     f"https://api.apify.com/v2/actor-runs/{run_id}/output",
+                #     headers={"Authorization": f"Bearer {APIFY_TOKEN}"}
+                # )
                 
-                if output_resp.ok:
-                    data = output_resp.json()
-                    st.subheader("Transcript")
-                    st.write(data.get("transcript"))
-                    st.subheader("Result")
-                    st.write(data.get("result"))
-                else:
-                    st.error("Failed to fetch actor output")
+                # if output_resp.ok:
+                #     data = output_resp.json()
+                #     st.subheader("Transcript")
+                #     st.write(data.get("transcript"))
+                #     st.subheader("Result")
+                #     st.write(data.get("result"))
+                # else:
+                #     st.error("Failed to fetch actor output")
+
 
 
 
