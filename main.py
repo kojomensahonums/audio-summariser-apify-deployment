@@ -166,11 +166,15 @@ async def main():
         "task": task
     })
 
-    await Actor.set_value("OUTPUT", {
-    "transcript": transcript,
-    "result": output,
-    "task": task
-    })
+    await Actor.set_value(
+    "OUTPUT",
+    {
+        "transcript": transcript,
+        "result": output,
+        "task": task
+    },
+    content_type="application/json"
+    )
 
 
     # Clean up temp file
@@ -183,6 +187,7 @@ async def main():
 # This runs the async main function
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
