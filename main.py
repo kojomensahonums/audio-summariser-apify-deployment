@@ -8,10 +8,12 @@ import tempfile
 from tempfile import NamedTemporaryFile
 import json
 import base64
+import time
 
 # -----------------------------
 # Helper functions
 # -----------------------------
+BASE_URL = "https://api.assemblyai.com/v2"
 
 def download_audio(url: str) -> str:
     """
@@ -32,26 +34,49 @@ def download_audio(url: str) -> str:
                 f.write(chunk)
             return f.name
 
-def transcribe_with_voxtral(audio_b64: str) -> str:
+def transcribe_with_assemblyai(audio_path: str) -> str:
     """
-    Transcribes audio using the Voxtral model via OpenRouter API.
+    Transcribes a local WAV file using AssemblyAI.
+    Returns transcript text or raises on failure.
     """
 
-    payload = {
-        "model": "mistralai/voxtral-small-24b-2507",
-        "messages": [
-            {"role": "user", "content": [
-                {"type": "text", "text": "Transcribe this audio accurately. Do not summarize. Do not add commentary."},
-                {"type": "input_audio", "input_audio": {"data": audio_b64, "format": "wav"}}
-            ]}
-        ]
-    }
-    r = requests.post("https://openrouter.ai/api/v1/chat/completions",
-                      headers={"Authorization": f"Bearer {OPENROUTER_KEY}",
-                               "Content-Type": "application/json"},
-                      data=json.dumps(payload))
-    resp_json = r.json()
-    return resp_json["choices"][0]["message"]["content"][0]["text"]
+    headers = {"authorization": ASSEMBLYAI_API_KEY}
+
+    # 1. Upload audio
+    with open(audio_path, "rb") as f:
+        upload_resp = requests.post(
+            f"{BASE_URL}/upload",
+            headers=headers,
+            data=f
+        )
+    upload_resp.raise_for_status()
+    audio_url = upload_resp.json()["upload_url"]
+
+    # 2. Start transcription
+    transcript_resp = requests.post(
+        f"{BASE_URL}/transcript",
+        headers={**headers, "content-type": "application/json"},
+        json={"audio_url": audio_url}
+    )
+    transcript_resp.raise_for_status()
+    transcript_id = transcript_resp.json()["id"]
+
+    # 3. Poll until done
+    while True:
+        r = requests.get(
+            f"{BASE_URL}/transcript/{transcript_id}",
+            headers=headers
+        )
+        r.raise_for_status()
+        data = r.json()
+
+        if data["status"] == "completed":
+            return data["text"]
+
+        if data["status"] == "error":
+            raise RuntimeError(data["error"])
+
+        time.sleep(2)
 
 
 def llm_task_with_deepseek(transcript: str, task_type: str = "summary") -> str:
@@ -65,7 +90,7 @@ def llm_task_with_deepseek(transcript: str, task_type: str = "summary") -> str:
         prompt = f"Create social media content from this transcript. Keep them concise and compelling:\n{transcript}"
 
     payload = {
-        "model": "deepseek/deepseek-chat-v3.1",
+        "model": "tngtech/deepseek-r1t2-chimera:free",
         "messages": [{"role": "user", "content": prompt}]
     }
     r = requests.post("https://openrouter.ai/api/v1/chat/completions",
@@ -114,17 +139,18 @@ async def main():
         raise ValueError("No audio provided")
 
     # Convert to WAV (for Voxtral) no matter what
-    audio_segment = AudioSegment.from_file(audio_path)
-    wav_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-    audio_segment.export(wav_file.name, format="wav")
-    audio_path = wav_file.name
+    # audio_segment = AudioSegment.from_file(audio_path)
+    # wav_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+    # audio_segment.export(wav_file.name, format="wav")
+    # audio_path = wav_file.name
 
-    # Read WAV and encode to base64 for Voxtral
-    with open(audio_path, "rb") as f:
-        audio_bytes = f.read()
-    audio_b64_for_voxtral = base64.b64encode(audio_bytes).decode("utf-8")
+    # # Read WAV and encode to base64 for Voxtral
+    # with open(audio_path, "rb") as f:
+    #     audio_bytes = f.read()
+    # audio_b64_for_voxtral = base64.b64encode(audio_bytes).decode("utf-8")
 
-    transcript = transcribe_with_voxtral(audio_b64_for_voxtral)
+    # transcript = transcribe_with_voxtral(audio_b64_for_voxtral)
+    transcript = transcribe_with_assemblyai(audio_path)
     if task == "summary":
         output = llm_task_with_deepseek(transcript, "summary")
     elif task == "copywrite":
@@ -148,4 +174,5 @@ async def main():
 # This runs the async main function
 if __name__ == "__main__":
     asyncio.run(main())
+
 
