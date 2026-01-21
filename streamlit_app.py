@@ -49,7 +49,14 @@ if st.button("Run"):
                         f"https://api.apify.com/v2/key-value-stores/actor-default/records/OUTPUT",
                         headers={"Authorization": f"Bearer {APIFY_TOKEN}"}
                     )
-                    status = status_resp.json()["data"]["status"]
+                    # status = status_resp.json()["data"]["status"]
+                    status_json = status_resp.json()
+                    if "data" not in status_json:
+                        st.error(f"Failed to fetch run status: {status_json}")
+                        st.stop()
+                    
+                    status = status_json["data"].get("status")
+
                 
                     if status == "SUCCEEDED":
                         break
@@ -73,5 +80,6 @@ if st.button("Run"):
                     st.write(data.get("result"))
                 else:
                     st.error("Failed to fetch actor output")
+
 
 
