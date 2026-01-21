@@ -140,18 +140,6 @@ async def main():
     else:
         raise ValueError("No audio provided")
 
-    # Convert to WAV (for Voxtral) no matter what
-    # audio_segment = AudioSegment.from_file(audio_path)
-    # wav_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
-    # audio_segment.export(wav_file.name, format="wav")
-    # audio_path = wav_file.name
-
-    # # Read WAV and encode to base64 for Voxtral
-    # with open(audio_path, "rb") as f:
-    #     audio_bytes = f.read()
-    # audio_b64_for_voxtral = base64.b64encode(audio_bytes).decode("utf-8")
-
-    # transcript = transcribe_with_voxtral(audio_b64_for_voxtral)
     transcript = transcribe_with_assemblyai(audio_path)
     if task == "summary":
         output = llm_task_with_deepseek(transcript, "summary")
@@ -183,10 +171,13 @@ async def main():
     if not audio_b64 and audio_url and os.path.exists(audio_path):
         os.remove(audio_path)
 
+    await Actor.exit()
+
 
 # This runs the async main function
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 
