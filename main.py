@@ -14,6 +14,8 @@ import time
 # Helper functions
 # -----------------------------
 BASE_URL = "https://api.assemblyai.com/v2"
+ASSEMBLYAI_API_KEY = os.environ.get("ASSEMBLYAI_API_KEY")
+OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY")
 
 def download_audio(url: str) -> str:
     """
@@ -174,5 +176,6 @@ async def main():
 # This runs the async main function
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
