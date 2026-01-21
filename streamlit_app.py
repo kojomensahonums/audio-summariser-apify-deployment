@@ -45,7 +45,8 @@ if st.button("Run"):
                 # Fetch dataset output
                 while True:
                     status_resp = requests.get(
-                        f"https://api.apify.com/v2/actor-runs/{run_id}",
+                        # f"https://api.apify.com/v2/actor-runs/{run_id}",
+                        f"https://api.apify.com/v2/key-value-stores/actor-default/records/OUTPUT",
                         headers={"Authorization": f"Bearer {APIFY_TOKEN}"}
                     )
                     status = status_resp.json()["data"]["status"]
@@ -72,4 +73,5 @@ if st.button("Run"):
                     st.write(data.get("result"))
                 else:
                     st.error("Failed to fetch actor output")
+
 
